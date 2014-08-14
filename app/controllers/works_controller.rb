@@ -757,28 +757,37 @@ public
   def load_owner
     if params[:user_id].present?
       @user = User.find_by_login(params[:user_id])
+
       if params[:pseud_id].present?
         @pseud = @user.pseuds.find_by_name(params[:pseud_id])
       end
     end
-    if params[:tag_id]
-      @tag = Tag.find_by_name(params[:tag_id])
-      unless @tag && @tag.is_a?(Tag)
-        raise ActiveRecord::RecordNotFound, "Couldn't find tag named '#{params[:tag_id]}'"
-      end
-      unless @tag.canonical?
-        if @tag.merger.present?
-          if @collection.present?
-            redirect_to collection_tag_works_path(@collection, @tag.merger) and return
-          else
-            redirect_to tag_works_path(@tag.merger) and return
-          end
-        else
-          redirect_to tag_path(@tag) and return
-        end
-      end
-    end
+
+    return load_tags if params[:tag_id]
+
     @owner = @pseud || @user || @collection || @tag
+  end
+
+  def load_tags
+    @tag = Tag.find_by_name(params[:tag_id])
+
+    unless @tag.is_a?(Tag)
+      raise ActiveRecord::RecordNotFound, "Couldn't find tag named '#{params[:tag_id]}'"
+    end
+
+    redirect_for_tags unless @tag.canonical?
+  end
+
+  def redirect_for_tags
+    unless @tag.merger.present?
+      return redirect_to tag_path(@tag)
+    end
+
+    if @collection.present?
+      redirect_to collection_tag_works_path(@collection, @tag.merger)
+    else
+      redirect_to tag_works_path(@tag.merger)
+    end
   end
 
   def load_pseuds
