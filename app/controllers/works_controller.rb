@@ -26,50 +26,50 @@ class WorksController < ApplicationController
 
   # we want to extract the countable params from work_search and move them into their fields
   def clean_work_search_params
-    if params[:work_search].present? && params[:work_search][:query].present?
-      # swap in gt/lt for ease of matching; swap them back out for safety at the end
-      params[:work_search][:query].gsub!('&gt;', '>')
-      params[:work_search][:query].gsub!('&lt;', '<')
+    return unless params[:work_search].present? && params[:work_search][:query].present?
 
-      # extract countable params
-      %w(word kudo comment bookmark hit).each do |term|
-        if params[:work_search][:query].gsub!(/#{term}s?\s*(?:\_?count)?\s*:?\s*((?:<|>|=|:)\s*\d+(?:\-\d+)?)/i, '')
-          # pluralize, add _count, convert to symbol
-          term = term.pluralize unless term == "word"
-          term = term + "_count" unless term == "hits"
-          term = term.to_sym
+    # swap in gt/lt for ease of matching; swap them back out for safety at the end
+    params[:work_search][:query].gsub!('&gt;', '>')
+    params[:work_search][:query].gsub!('&lt;', '<')
 
-          value = $1.gsub(/^(\:|\=)/, '') # get rid of : and =
-          # don't overwrite if submitting from advanced search?
-          params[:work_search][term] = value unless params[:work_search][term].present?
-        end
+    # extract countable params
+    %w(word kudo comment bookmark hit).each do |term|
+      if params[:work_search][:query].gsub!(/#{term}s?\s*(?:\_?count)?\s*:?\s*((?:<|>|=|:)\s*\d+(?:\-\d+)?)/i, '')
+        # pluralize, add _count, convert to symbol
+        term = term.pluralize unless term == "word"
+        term = term + "_count" unless term == "hits"
+        term = term.to_sym
+
+        value = $1.gsub(/^(\:|\=)/, '') # get rid of : and =
+        # don't overwrite if submitting from advanced search?
+        params[:work_search][term] = value unless params[:work_search][term].present?
       end
-
-      # get sort-by
-      if params[:work_search][:query].gsub!(/sort(?:ed)?\s*(?:by)?\s*:?\s*(<|>|=|:)\s*(\w+)\s*(ascending|descending)?/i, '')
-        sortdir = $3 || $1
-        sortby = $2.gsub(/\s*_?count/, '').singularize # turn word_count or word count or words into just "word" eg
-
-        _, sort_column = WorkSearch::SORT_OPTIONS.find {|opt, _| opt =~ /#{sortby}/i}
-        params[:work_search][:sort_column] = sort_column unless sort_column.nil?
-
-        params[:work_search][:sort_direction] = sort_direction(sortdir)
-      end
-
-      # put categories into quotes
-      qr = Regexp.new('(?:"|\')?')
-      %w(m/m f/f f/m m/f).each do |cat|
-        cr = Regexp.new("#{qr}#{cat}#{qr}")
-        params[:work_search][:query].gsub!(cr, "\"#{cat}\"")
-      end
-
-      # swap out gt/lt
-      params[:work_search][:query].gsub!('>', '&gt;')
-      params[:work_search][:query].gsub!('<', '&lt;')
-
-      # get rid of empty queries
-      params[:work_search][:query] = nil if params[:work_search][:query].match(/^\s*$/)
     end
+
+    # get sort-by
+    if params[:work_search][:query].gsub!(/sort(?:ed)?\s*(?:by)?\s*:?\s*(<|>|=|:)\s*(\w+)\s*(ascending|descending)?/i, '')
+      sortdir = $3 || $1
+      sortby = $2.gsub(/\s*_?count/, '').singularize # turn word_count or word count or words into just "word" eg
+
+      _, sort_column = WorkSearch::SORT_OPTIONS.find {|opt, _| opt =~ /#{sortby}/i}
+      params[:work_search][:sort_column] = sort_column unless sort_column.nil?
+
+      params[:work_search][:sort_direction] = sort_direction(sortdir)
+    end
+
+    # put categories into quotes
+    qr = Regexp.new('(?:"|\')?')
+    %w(m/m f/f f/m m/f).each do |cat|
+      cr = Regexp.new("#{qr}#{cat}#{qr}")
+      params[:work_search][:query].gsub!(cr, "\"#{cat}\"")
+    end
+
+    # swap out gt/lt
+    params[:work_search][:query].gsub!('>', '&gt;')
+    params[:work_search][:query].gsub!('<', '&lt;')
+
+    # get rid of empty queries
+    params[:work_search][:query] = nil if params[:work_search][:query].match(/^\s*$/)
   end
 
   def search
