@@ -603,18 +603,22 @@ protected
   def in_moderated_collection
     moderated_collections = []
     @work.collections.each do |collection|
-      if !collection.nil? && collection.moderated? && !collection.user_is_posting_participant?(current_user)
-        if @work.collection_items.present?
-          @work.collection_items.each do |collection_item|
-            if collection_item.collection == collection
-              if collection_item.user_approval_status == 1 && collection_item.collection_approval_status == 0
-                moderated_collections << collection
-              end
+      if !collection.nil? && collection.moderated? &&
+        !collection.user_is_posting_participant?(current_user) &&
+        @work.collection_items.present?
+
+        @work.collection_items.each do |collection_item|
+          if collection_item.collection == collection &&
+            collection_item.user_approval_status == 1 &&
+            collection_item.collection_approval_status == 0
+
+              moderated_collections << collection
             end
           end
         end
       end
     end
+
     if moderated_collections.present?
       flash[:notice] ||= ""
       flash[:notice] += ts(" You have submitted your work to #{moderated_collections.size > 1 ? "moderated collections (%{all_collections}). It will not become a part of those collections" : "the moderated collection '%{all_collections}'. It will not become a part of the collection"} until it has been approved by a moderator.", :all_collections => moderated_collections.map { |f| f.title }.join(', '))
