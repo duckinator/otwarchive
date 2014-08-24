@@ -602,20 +602,10 @@ protected
   # check to see if the work is being added / has been added to a moderated collection, then let user know that
   def in_moderated_collection
     moderated_collections = []
+
     @work.collections.each do |collection|
-      if !collection.nil? && collection.moderated? &&
-        !collection.user_is_posting_participant?(current_user) &&
-        @work.collection_items.present?
-
-        @work.collection_items.each do |collection_item|
-          if collection_item.collection == collection &&
-            collection_item.user_approval_status == 1 &&
-            collection_item.collection_approval_status == 0
-
-              moderated_collections << collection
-            end
-          end
-        end
+      if moderated_and_present(collection)
+        moderated_collections += collection_items(collection)
       end
     end
 
@@ -1002,6 +992,20 @@ public
       :external_coauthor_name => params[:external_coauthor_name],
       :external_coauthor_email => params[:external_coauthor_email]
     }
+  end
+
+  def moderated_and_present(collection)
+    (!collection.nil? && collection.moderated? &&
+      !collection.user_is_posting_participant?(current_user) &&
+      @work.collection_items.present?)
+  end
+
+  def collection_items(collection)
+    @works.collection_items.filter do |collection_item|
+      (collection_item.collection == collection &&
+        collection_item.user_approval_status == 1 &&
+        collection_item.collection_approval_status == 0)
+    end
   end
 
 end
