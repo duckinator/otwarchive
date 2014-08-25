@@ -118,24 +118,7 @@ class WorksController < ApplicationController
       else
         @search = WorkSearch.new(options.merge(faceted: true, works_parent: @owner))
 
-        # If we're using caching we'll try to get the results from cache
-        # Note: we only cache some first initial number of pages since those are biggest bang for
-        # the buck -- users don't often go past them
-        if use_caching? && params[:work_search].blank? && params[:fandom_id].blank? &&
-          (params[:page].blank? || params[:page].to_i <= ArchiveConfig.PAGES_TO_CACHE)
-          # the subtag is for eg collections/COLL/tags/TAG
-          subtag = (@tag.present? && @tag != @owner) ? @tag : nil
-          user = current_user.present? ? "logged_in" : "logged_out"
-          @works = Rails.cache.fetch("#{@owner.works_index_cache_key(subtag)}_#{user}_page#{params[:page]}") do
-            results = @search.search_results
-            # calling this here to avoid frozen object errors
-            results.items
-            results.facets
-            results
-          end
-        else
-          @works = @search.search_results
-        end
+        fetch_search_results!
 
         @facets = @works.facets
       end
@@ -1043,6 +1026,27 @@ public
       (collection_item.collection == collection &&
         collection_item.user_approval_status == 1 &&
         collection_item.collection_approval_status == 0)
+    end
+  end
+
+  def fetch_search_results!
+    # If we're using caching we'll try to get the results from cache
+    # Note: we only cache some first initial number of pages since those are biggest bang for
+    # the buck -- users don't often go past them
+    if use_caching? && params[:work_search].blank? && params[:fandom_id].blank? &&
+      (params[:page].blank? || params[:page].to_i <= ArchiveConfig.PAGES_TO_CACHE)
+      # the subtag is for eg collections/COLL/tags/TAG
+      subtag = (@tag.present? && @tag != @owner) ? @tag : nil
+      user = current_user.present? ? "logged_in" : "logged_out"
+      @works = Rails.cache.fetch("#{@owner.works_index_cache_key(subtag)}_#{user}_page#{params[:page]}") do
+        results = @search.search_results
+        # calling this here to avoid frozen object errors
+        results.items
+        results.facets
+        results
+      end
+    else
+      @works = @search.search_results
     end
   end
 
